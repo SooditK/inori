@@ -87,6 +87,7 @@ func main() {
 	http.HandleFunc("/get", rateLimitMiddleware(getSecretHandler))
 	http.HandleFunc("/set", rateLimitMiddleware(setSecretHandler))
 	http.HandleFunc("/delete", rateLimitMiddleware(deleteSecretHandler))
+	http.HandleFunc("/health", healthCheckHandler)
 
 	log.Println("Secrets Manager running on :8080")
 	http.ListenAndServe(":8080", nil)
@@ -297,4 +298,28 @@ func rateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+func healthCheckHandler(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+	defer cancel()
+
+	// Check DB
+	dbErr := db.PingContext(ctx)
+	if dbErr != nil {
+		http.Error(w, "DB unhealthy: "+dbErr.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Check Redis if enabled
+	if useRedis {
+		_, redisErr := rdb.Ping(ctx).Result()
+		if redisErr != nil {
+			http.Error(w, "Redis unhealthy: "+redisErr.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, "OK")
 }
