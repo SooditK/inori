@@ -53,7 +53,10 @@ The service will be available at http://localhost:8080.
 
 ## Usage
 
-Authorization: <your SECRETS_API_TOKEN>
+### Authorization
+
+Authorization: `<your SECRETS_API_TOKEN>`
+
 
 ### Get a secret
 GET /get?key=<key>
